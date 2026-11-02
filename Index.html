@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>일본어 플래시카드: 히라가나에서 단어까지</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1>일본어 플래시카드</h1>
+    <nav class="stages" role="tablist" aria-label="학습 단계">
+      <button class="stage" role="tab" data-act="stage" data-s="kana" aria-selected="true"><span class="n">1</span>히라가나</button>
+      <button class="stage" role="tab" data-act="stage" data-s="word" aria-selected="false"><span class="n">2</span>단어<span class="tag" id="lockTag">잠김</span></button>
+    </nav>
+  </header>
+
+  <div id="banner"></div>
+
+  <div class="bar-row">
+    <div class="seg" id="modes" role="group" aria-label="학습 방식">
+      <button data-act="mode" data-m="browse" aria-pressed="true">훑어보기</button>
+      <button data-act="mode" data-m="quiz" aria-pressed="false">퀴즈</button>
+    </div>
+    <div class="chips" id="ranges" role="group" aria-label="학습 범위"></div>
+  </div>
+
+  <section class="progress" id="progress"></section>
+
+  <main id="main"></main>
+
+  <footer class="foot">
+    <div class="hints" id="hint"></div>
+    <button class="link" id="resetBtn" data-act="reset">진행 상황 지우기</button>
+  </footer>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
