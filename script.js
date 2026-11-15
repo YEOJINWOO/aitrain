@@ -67,6 +67,7 @@ function buildWordCards(words){
 const WORD_TOOL = {
   name:'save_words',
   description:'일본어 학습용 단어 목록을 저장한다.',
+  strict:true,
   input_schema:{
     type:'object',
     properties:{
@@ -80,11 +81,13 @@ const WORD_TOOL = {
             kanji:{type:'string', description:'한자 표기. 일반적으로 히라가나로만 쓰면 빈 문자열'},
             meaning:{type:'string', description:'한국어 뜻'}
           },
-          required:['group','kana','kanji','meaning']
+          required:['group','kana','kanji','meaning'],
+          additionalProperties:false
         }
       }
     },
-    required:['words']
+    required:['words'],
+    additionalProperties:false
   }
 };
 
@@ -112,9 +115,9 @@ async function fetchWords(apiKey){
     },
     body:JSON.stringify({
       model:MODEL,
-      max_tokens:8000,
+      max_tokens:16000,
       tools:[WORD_TOOL],
-      tool_choice:{type:'tool', name:'save_words'},
+      tool_choice:{type:'auto'},   // Sonnet 5.5는 도구 강제 호출(type:'tool')을 지원하지 않음
       messages:[{role:'user', content:wordPrompt()}]
     })
   });
