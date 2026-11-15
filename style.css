@@ -138,3 +138,10 @@ button,input{font:inherit;color:inherit}
 @media (prefers-reduced-motion:reduce){
   .card,.bar>span{transition:none}
 }
+
+.field{display:flex;flex-direction:column;gap:6px;font-size:.9rem;font-weight:500}
+.field input{padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper)}
+.panel .small{font-size:.8rem;margin:6px 0 0}
+.panel .error{color:var(--bad);margin:10px 0 0}
+.foot-btns{display:flex;gap:16px}
+.btn:disabled{opacity:.6;cursor:wait}
