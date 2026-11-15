@@ -6,6 +6,7 @@ const MASTER = 3; // 연속 정답 횟수
 const KEY = 'jp-flashcards-v1';
 const WORDS_KEY = 'jp-words-v1';      // Claude가 만든 단어 저장
 const API_KEY_KEY = 'jp-claude-key';  // 사용자가 입력한 API 키 저장
+const API_KEY = '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';                  // ← 여기에 API 키를 넣으세요. 예: 'sk-ant-...'
 const MODEL = 'claude-sonnet-5-5';
 const PER_GROUP = 15;                 // 그룹당 요청할 단어 수
 
@@ -252,8 +253,9 @@ function setupHTML(){
   return '<div class="panel"><h2>'+(has ? 'Claude로 새 단어 받기' : 'Claude로 단어 불러오기')+'</h2>' +
     '<p>Claude API로 그룹마다 '+PER_GROUP+'개씩 단어를 만들어 와요. 받은 단어는 이 브라우저에 저장돼서 다음에는 바로 열려요.' +
     (has ? ' 새로 받으면 지금 단어 목록이 바뀌어요.' : '') + '</p>' +
-    '<label class="field">Anthropic API 키<input type="password" id="apiKey" autocomplete="off" placeholder="sk-ant-..." value="'+esc(getApiKey())+'"'+(S.loading ? ' disabled' : '')+'></label>' +
-    '<p class="small">키는 이 브라우저(localStorage)에만 저장되고 Anthropic API로만 보내져요.</p>' +
+    (API_KEY ? '' :
+      '<label class="field">Anthropic API 키<input type="password" id="apiKey" autocomplete="off" placeholder="sk-ant-..." value="'+esc(getApiKey())+'"'+(S.loading ? ' disabled' : '')+'></label>' +
+      '<p class="small">키는 이 브라우저(localStorage)에만 저장되고 Anthropic API로만 보내져요.</p>') +
     (S.err ? '<p class="error" role="alert">'+esc(S.err)+'</p>' : '') +
     '<div class="row"><button class="btn primary" data-act="fetchwords"'+(S.loading ? ' disabled' : '')+'>'+(S.loading ? '불러오는 중… (30초~1분 걸려요)' : '단어 불러오기')+'</button>' +
     (has ? '<button class="btn quiet" data-act="cancelsetup"'+(S.loading ? ' disabled' : '')+'>취소</button>' : '') +
@@ -262,9 +264,9 @@ function setupHTML(){
 
 async function doFetchWords(){
   const input = $('#apiKey');
-  const key = input ? input.value.trim() : '';
+  const key = API_KEY || (input ? input.value.trim() : '');
   if (!key){ S.err = 'API 키를 입력해 주세요.'; renderMain(); return; }
-  setApiKey(key);
+  if (!API_KEY) setApiKey(key);
   S.loading = true; S.err = ''; renderMain();
   try{
     const words = await fetchWords(key);
