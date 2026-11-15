@@ -6,7 +6,7 @@ const MASTER = 3; // 연속 정답 횟수
 const KEY = 'jp-flashcards-v1';
 const WORDS_KEY = 'jp-words-v1';      // Claude가 만든 단어 저장
 const API_KEY_KEY = 'jp-claude-key';  // 사용자가 입력한 API 키 저장
-const API_KEY = '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';                  // ← 여기에 API 키를 넣으세요. 예: 'sk-ant-...'
+const API_KEY = '';                  // 비워 두면 화면에서 키를 입력받음 (GitHub에 올릴 때는 반드시 비워 두기)
 const MODEL = 'claude-sonnet-5-5';
 const PER_GROUP = 15;                 // 그룹당 요청할 단어 수
 
