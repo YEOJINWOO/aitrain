@@ -1,9 +1,13 @@
 (function(){
 'use strict';
 
-/* ========== 데이터 ========== */
+/* ========== 설정 ========== */
 const MASTER = 3; // 연속 정답 횟수
 const KEY = 'jp-flashcards-v1';
+const WORDS_KEY = 'jp-words-v1';      // Claude가 만든 단어 저장
+const API_KEY_KEY = 'jp-claude-key';  // 사용자가 입력한 API 키 저장
+const MODEL = 'claude-sonnet-5-5';
+const PER_GROUP = 15;                 // 그룹당 요청할 단어 수
 
 const KANA_GROUPS = [
   {id:'basic', name:'기본'},
@@ -24,41 +28,119 @@ const KANA_RAW = {
   yoon:'きゃ,캬,kya;きゅ,큐,kyu;きょ,쿄,kyo;しゃ,샤,sha;しゅ,슈,shu;しょ,쇼,sho;ちゃ,차,cha;ちゅ,추,chu;ちょ,초,cho;にゃ,냐,nya;にゅ,뉴,nyu;にょ,뇨,nyo;ひゃ,햐,hya;ひゅ,휴,hyu;ひょ,효,hyo;みゃ,먀,mya;みゅ,뮤,myu;みょ,묘,myo;りゃ,랴,rya;りゅ,류,ryu;りょ,료,ryo;ぎゃ,갸,gya;ぎゅ,규,gyu;ぎょ,교,gyo;じゃ,자,ja;じゅ,주,ju;じょ,조,jo;びゃ,뱌,bya;びゅ,뷰,byu;びょ,뵤,byo;ぴゃ,퍄,pya;ぴゅ,퓨,pyu;ぴょ,표,pyo'
 };
 
-// 히라가나|한자|뜻 (히라가나 기본·탁음·반탁음만 사용)
-const WORD_RAW = {
-  nature:'いぬ|犬|개;ねこ|猫|고양이;さかな|魚|물고기;とり|鳥|새;うま|馬|말;うし|牛|소;さる|猿|원숭이;くま|熊|곰;かめ|亀|거북이;むし|虫|벌레;はな|花|꽃;き|木|나무;もり|森|숲;やま|山|산;かわ|川|강;うみ|海|바다;いけ|池|연못;そら|空|하늘;くも|雲|구름;あめ|雨|비;ゆき|雪|눈(내리는 눈);かぜ|風|바람;つき|月|달;ほし|星|별;いし|石|돌;ひ|火|불;みず|水|물',
-  food:'ごはん|ご飯|밥;あさごはん|朝ご飯|아침밥;ひるごはん|昼ご飯|점심밥;ばんごはん|晩ご飯|저녁밥;たまご|卵|계란;にく|肉|고기;やさい|野菜|채소;くだもの|果物|과일;りんご|林檎|사과;みかん|蜜柑|귤;ぶどう|葡萄|포도;もも|桃|복숭아;なし|梨|배(과일);すいか|西瓜|수박;さとう|砂糖|설탕;しお|塩|소금;みそ|味噌|된장;さけ|酒|술;すし|寿司|초밥;あまい|甘い|달다;からい|辛い|맵다;おいしい|美味しい|맛있다',
-  people:'ひと|人|사람;わたし|私|나;あなた|貴方|당신;ともだち|友達|친구;おとこ|男|남자;おんな|女|여자;こども|子供|아이;かぞく|家族|가족;ちち|父|아버지;はは|母|어머니;あに|兄|형·오빠;あね|姉|누나·언니;いもうと|妹|여동생;おとうと|弟|남동생;せんせい|先生|선생님;がくせい|学生|학생',
-  things:'いえ|家|집;へや|部屋|방;にわ|庭|정원;まち|町|마을;くに|国|나라;えき|駅|역;みち|道|길;ぎんこう|銀行|은행;くるま|車|자동차;ひこうき|飛行機|비행기;ふね|船|배(선박);ほん|本|책;しんぶん|新聞|신문;てがみ|手紙|편지;でんわ|電話|전화;ちず|地図|지도;つくえ|机|책상;いす|椅子|의자;まど|窓|창문;かぎ|鍵|열쇠;かばん|鞄|가방;さいふ|財布|지갑;くつ|靴|신발;かさ|傘|우산;とけい|時計|시계;かがみ|鏡|거울;ふとん|布団|이불;はし|箸|젓가락;さら|皿|접시;おかね|お金|돈;いろ|色|색;うた|歌|노래;えいが|映画|영화;しごと|仕事|일;ことば|言葉|말(언어)',
-  body:'あたま|頭|머리;かみ|髪|머리카락;かお|顔|얼굴;め|目|눈(신체);みみ|耳|귀;くち|口|입;て|手|손;ゆび|指|손가락;あし|足|발·다리;せなか|背中|등;おなか|お腹|배(복부);からだ|体|몸;こころ|心|마음',
-  verb:'たべる|食べる|먹다;のむ|飲む|마시다;みる|見る|보다;きく|聞く|듣다;いく|行く|가다;くる|来る|오다;あう|会う|만나다;はなす|話す|말하다;かく|書く|쓰다;よむ|読む|읽다;かう|買う|사다;うる|売る|팔다;つかう|使う|사용하다;まつ|待つ|기다리다;ねる|寝る|자다;おきる|起きる|일어나다;あるく|歩く|걷다;はしる|走る|달리다;あそぶ|遊ぶ|놀다;すむ|住む|살다(거주);わかる|分かる|이해하다',
-  adj:'おおきい|大きい|크다;ちいさい|小さい|작다;ながい|長い|길다;みじかい|短い|짧다;たかい|高い|높다·비싸다;やすい|安い|싸다;あたらしい|新しい|새롭다;ふるい|古い|오래되다;はやい|速い|빠르다;おそい|遅い|느리다·늦다;おもい|重い|무겁다;かるい|軽い|가볍다;あつい|暑い|덥다;さむい|寒い|춥다;あかい|赤い|빨갛다;あおい|青い|파랗다;しろい|白い|하얗다;くろい|黒い|검다;すき|好き|좋아하다;きれい|綺麗|예쁘다·깨끗하다',
-  time:'あさ|朝|아침;ひる|昼|낮;よる|夜|밤;いま|今|지금;きのう|昨日|어제;あした|明日|내일;まいにち|毎日|매일;はる|春|봄;なつ|夏|여름;あき|秋|가을;ふゆ|冬|겨울',
-  talk:'ありがとう|有難う|고맙습니다;こんにちは|今日は|안녕하세요(낮 인사);おはよう|お早う|안녕(아침 인사);さようなら|左様なら|안녕히 가세요;すみません|済みません|죄송합니다·실례합니다;ごめんなさい||미안해요;はい||네;いいえ||아니요;いち|一|1(일);に|二|2(이);さん|三|3(삼);よん|四|4(사);ご|五|5(오);ろく|六|6(육);なな|七|7(칠);はち|八|8(팔)'
-};
-
-const CARDS = [];
+const KANA_CARDS = [];
 KANA_GROUPS.forEach(g => {
   KANA_RAW[g.id].split(';').forEach(s => {
     const p = s.split(',');
-    CARDS.push({id:'k:'+p[0], stage:'kana', group:g.id, front:p[0], ans:p[1], ro:p[2]});
+    KANA_CARDS.push({id:'k:'+p[0], stage:'kana', group:g.id, front:p[0], ans:p[1], ro:p[2]});
   });
 });
-CARDS.forEach(c => {
-  if (c.stage !== 'kana') return;
-  c.same = CARDS.filter(o => o.stage === 'kana' && o !== c && o.ans === c.ans)
-                .map(o => o.front + ' (' + o.ro + ')').join(', ');
+KANA_CARDS.forEach(c => {
+  c.same = KANA_CARDS.filter(o => o !== c && o.ans === c.ans)
+                     .map(o => o.front + ' (' + o.ro + ')').join(', ');
 });
-WORD_GROUPS.forEach(g => {
-  WORD_RAW[g.id].split(';').forEach(s => {
-    const p = s.split('|');
-    CARDS.push({id:'w:'+p[0]+':'+p[2], stage:'word', group:g.id, front:p[0], kanji:p[1], ans:p[2]});
+
+// 단어에 쓸 수 있는 글자: 기본 + 탁음·반탁음 (요음·작은 글자·장음 제외)
+const ALLOWED = new Set(KANA_CARDS.filter(c => c.group !== 'yoon').map(c => c.front));
+
+/* ========== 단어: Claude API로 불러오기 ========== */
+let WORD_CARDS = [];
+
+function buildWordCards(words){
+  const seen = new Set();
+  const out = [];
+  words.forEach(w => {
+    if (!w || typeof w.kana !== 'string' || typeof w.meaning !== 'string') return;
+    const kana = w.kana.trim(), meaning = w.meaning.trim(), kanji = (w.kanji || '').trim();
+    if (!kana || !meaning) return;
+    if (!WORD_GROUPS.some(g => g.id === w.group)) return;
+    if (![...kana].every(ch => ALLOWED.has(ch))) return;   // 허용 안 된 글자가 섞인 단어는 버림
+    const id = 'w:' + kana + ':' + meaning;
+    if (seen.has(id)) return;
+    seen.add(id);
+    out.push({id:id, stage:'word', group:w.group, front:kana, kanji:kanji, ans:meaning});
   });
-});
+  return out;
+}
+
+const WORD_TOOL = {
+  name:'save_words',
+  description:'일본어 학습용 단어 목록을 저장한다.',
+  input_schema:{
+    type:'object',
+    properties:{
+      words:{
+        type:'array',
+        items:{
+          type:'object',
+          properties:{
+            group:{type:'string', enum:WORD_GROUPS.map(g => g.id)},
+            kana:{type:'string', description:'히라가나 표기'},
+            kanji:{type:'string', description:'한자 표기. 일반적으로 히라가나로만 쓰면 빈 문자열'},
+            meaning:{type:'string', description:'한국어 뜻'}
+          },
+          required:['group','kana','kanji','meaning']
+        }
+      }
+    },
+    required:['words']
+  }
+};
+
+function wordPrompt(){
+  const groups = WORD_GROUPS.map(g => '- ' + g.id + ': ' + g.name).join('\n');
+  return '한국인 일본어 초급 학습자를 위한 기초 단어를 아래 그룹마다 ' + PER_GROUP + '개씩 골라 save_words 도구로 제출해 주세요.\n\n' +
+    '그룹:\n' + groups + '\n\n' +
+    '규칙:\n' +
+    '1. kana는 히라가나만 씁니다. 기본 히라가나(あ~ん)와 탁음·반탁음(が, ぱ 등)만 허용합니다.\n' +
+    '2. 작은 글자(ゃ ゅ ょ っ ぁ 등), 장음 부호(ー), 가타카나가 들어가는 단어는 넣지 마세요.\n' +
+    '3. kanji는 일반적인 한자 표기를 씁니다. 보통 히라가나로만 쓰는 말이면 빈 문자열로 둡니다.\n' +
+    '4. meaning은 짧은 한국어 뜻입니다. 같은 뜻의 단어가 여럿이면 괄호로 구분합니다. 예: 눈(신체), 눈(내리는 눈).\n' +
+    '5. 동사는 사전형, 형용사는 기본형으로 씁니다.\n' +
+    '6. 한 그룹 안에서 단어가 겹치지 않게 합니다.';
+}
+
+async function fetchWords(apiKey){
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{
+      'content-type':'application/json',
+      'x-api-key':apiKey,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'   // 브라우저에서 직접 호출할 때 필요
+    },
+    body:JSON.stringify({
+      model:MODEL,
+      max_tokens:8000,
+      tools:[WORD_TOOL],
+      tool_choice:{type:'tool', name:'save_words'},
+      messages:[{role:'user', content:wordPrompt()}]
+    })
+  });
+  if (!res.ok){
+    let msg = res.statusText;
+    try{ const j = await res.json(); if (j.error && j.error.message) msg = j.error.message; }catch(e){}
+    throw new Error('API 오류 ' + res.status + ': ' + msg);
+  }
+  const data = await res.json();
+  const block = (data.content || []).find(b => b.type === 'tool_use');
+  if (!block || !block.input || !Array.isArray(block.input.words)) throw new Error('응답에서 단어 목록을 찾지 못했어요.');
+  return block.input.words;
+}
+
+function loadWords(){
+  try{
+    const raw = localStorage.getItem(WORDS_KEY);
+    if (raw) WORD_CARDS = buildWordCards(JSON.parse(raw));
+  }catch(e){}
+}
+function saveWords(words){ try{ localStorage.setItem(WORDS_KEY, JSON.stringify(words)); }catch(e){} }
+function getApiKey(){ try{ return localStorage.getItem(API_KEY_KEY) || ''; }catch(e){ return ''; } }
+function setApiKey(k){ try{ localStorage.setItem(API_KEY_KEY, k); }catch(e){} }
 
 /* ========== 저장 ========== */
 const store = {
-  stats:{}, unlocked:false, speed:1.4, shuffle:false, speak:false,
+  stats:{}, speed:1.4, shuffle:false, speak:false,
   sel:{
     kana:{basic:true, dakuten:false, yoon:false},
     word:{nature:true, food:true, people:true, things:true, body:true, verb:true, adj:true, time:true, talk:true}
@@ -70,7 +152,6 @@ function load(){
     if (!raw) return;
     const p = JSON.parse(raw);
     if (p.stats) store.stats = p.stats;
-    if (typeof p.unlocked === 'boolean') store.unlocked = p.unlocked;
     if (typeof p.speed === 'number') store.speed = p.speed;
     if (typeof p.shuffle === 'boolean') store.shuffle = p.shuffle;
     if (typeof p.speak === 'boolean') store.speak = p.speak;
@@ -81,27 +162,28 @@ function load(){
 }
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(store)); }catch(e){} }
 load();
+loadWords();
 
 /* ========== 상태 ========== */
 const S = {
   stage:'kana', mode:'browse', deck:[], idx:0, flipped:false, playing:true, done:false,
   timer:null, fbTimer:null, q:null, answered:false, session:{n:0, ok:0}, lastId:null,
-  banner:false, confirmUnlock:false, confirmReset:false
+  confirmReset:false,
+  setup:false, loading:false, err:''   // 단어 불러오기 화면 상태
 };
 
 const $ = (s, r) => (r || document).querySelector(s);
 function esc(s){ return String(s).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
 function shuffle(a){ for (let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
-function cardsOf(stage){ return CARDS.filter(c => c.stage === stage); }
+function cardsOf(stage){ return stage === 'kana' ? KANA_CARDS : WORD_CARDS; }
 function pool(){ return cardsOf(S.stage).filter(c => store.sel[S.stage][c.group]); }
 function streak(c){ const s = store.stats[c.id]; return s ? s.s : 0; }
 function isMastered(c){ return streak(c) >= MASTER; }
 function groupName(c){ return GROUPS[c.stage].find(g => g.id === c.group).name; }
-function gate(){
-  const cs = cardsOf('kana').filter(c => c.group !== 'yoon');
-  return {m: cs.filter(isMastered).length, t: cs.length};
-}
 const canSpeak = 'speechSynthesis' in window;
+
+// 단어 단계에서 아직 단어가 없거나, 새 단어 받기를 눌렀을 때
+function showSetup(){ return S.stage === 'word' && (S.setup || !WORD_CARDS.length); }
 
 /* ========== 음성 ========== */
 let jaVoice = null;
@@ -123,15 +205,12 @@ function speakCurrent(){
 }
 
 /* ========== 상단 영역 ========== */
-function lockedWord(){ return S.stage === 'word' && !store.unlocked; }
-
 function renderTop(){
-  const locked = lockedWord();
+  const setup = showSetup();
   document.querySelectorAll('.stage').forEach(b => b.setAttribute('aria-selected', b.dataset.s === S.stage));
-  $('#lockTag').hidden = store.unlocked;
-  $('#modes').hidden = locked;
-  $('#ranges').hidden = locked;
-  $('#progress').hidden = locked;
+  $('#modes').hidden = setup;
+  $('#ranges').hidden = setup;
+  $('#progress').hidden = setup;
   document.querySelectorAll('#modes button').forEach(b => b.setAttribute('aria-pressed', b.dataset.m === S.mode));
 
   $('#ranges').innerHTML = GROUPS[S.stage].map(g => {
@@ -140,7 +219,7 @@ function renderTop(){
     return '<button class="chip" data-act="group" data-g="'+g.id+'" aria-pressed="'+(!!store.sel[S.stage][g.id])+'">'+esc(g.name)+' <small>'+m+'/'+cs.length+'</small></button>';
   }).join('');
 
-  if (!locked){
+  if (!setup){
     const p = pool();
     const m = p.filter(isMastered).length;
     const pct = p.length ? m / p.length * 100 : 0;
@@ -150,34 +229,58 @@ function renderTop(){
       '<p><span><b>'+m+'</b> / '+p.length+' 마스터</span><span class="sub">'+sub+(S.session.n ? ' · 이번 방문 '+S.session.ok+'/'+S.session.n : '')+'</span></p>';
   }
 
-  $('#banner').innerHTML = S.banner
-    ? '<div class="banner" role="status"><div><strong>히라가나를 마스터했어요</strong>2단계 단어가 열렸습니다.</div><div class="row"><button class="btn primary" data-act="togo">단어 시작</button><button class="btn quiet" data-act="closebanner">닫기</button></div></div>'
-    : '';
-
-  $('#hint').innerHTML = locked ? '' : (S.mode === 'browse'
+  $('#hint').innerHTML = setup ? '' : (S.mode === 'browse'
     ? '<span>스페이스: 자동 재생 켜기/끄기</span><span>← →: 이동</span><span>Enter: 뒤집기</span>'
     : '<span>1–4: 보기 선택</span><span>Enter: 다음 문제</span>');
+  $('#refetchBtn').hidden = !(S.stage === 'word' && WORD_CARDS.length && !S.setup);
   $('#resetBtn').textContent = S.confirmReset ? '한 번 더 누르면 모든 기록이 지워져요' : '진행 상황 지우기';
 }
 
 /* ========== 본문 ========== */
 function renderMain(){
   clearTimeout(S.timer);
-  if (lockedWord()){ $('#main').innerHTML = lockHTML(); return; }
+  if (showSetup()){ $('#main').innerHTML = setupHTML(); return; }
+  if (!pool().length){
+    $('#main').innerHTML = '<div class="panel"><h2>선택한 범위에 단어가 없어요</h2><p>다른 범위를 선택하거나 Claude로 새 단어를 받아 보세요.</p></div>';
+    return;
+  }
   if (S.mode === 'browse') renderBrowse(); else renderQuiz();
 }
 
-function lockHTML(){
-  const rows = ['basic','dakuten'].map(g => {
-    const cs = cardsOf('kana').filter(c => c.group === g);
-    const m = cs.filter(isMastered).length;
-    const name = KANA_GROUPS.find(x => x.id === g).name;
-    return '<div class="gate-row"><span>'+name+'</span><div class="bar"><span style="width:'+(m/cs.length*100)+'%"></span></div><b>'+m+' / '+cs.length+'</b></div>';
-  }).join('');
-  return '<div class="panel"><h2>단어는 히라가나를 마스터하면 열려요</h2>' +
-    '<p>기본과 탁음·반탁음 글자를 각각 연속 '+MASTER+'번 맞히면 마스터로 계산해요.</p>' + rows +
-    '<div class="row"><button class="btn primary" data-act="learn">히라가나 퀴즈로 가기</button>' +
-    '<button class="btn quiet" data-act="unlock">'+(S.confirmUnlock ? '정말 열까요? 한 번 더 누르세요' : '이미 알고 있어요. 바로 열기')+'</button></div></div>';
+function setupHTML(){
+  const has = WORD_CARDS.length > 0;
+  return '<div class="panel"><h2>'+(has ? 'Claude로 새 단어 받기' : 'Claude로 단어 불러오기')+'</h2>' +
+    '<p>Claude API로 그룹마다 '+PER_GROUP+'개씩 단어를 만들어 와요. 받은 단어는 이 브라우저에 저장돼서 다음에는 바로 열려요.' +
+    (has ? ' 새로 받으면 지금 단어 목록이 바뀌어요.' : '') + '</p>' +
+    '<label class="field">Anthropic API 키<input type="password" id="apiKey" autocomplete="off" placeholder="sk-ant-..." value="'+esc(getApiKey())+'"'+(S.loading ? ' disabled' : '')+'></label>' +
+    '<p class="small">키는 이 브라우저(localStorage)에만 저장되고 Anthropic API로만 보내져요.</p>' +
+    (S.err ? '<p class="error" role="alert">'+esc(S.err)+'</p>' : '') +
+    '<div class="row"><button class="btn primary" data-act="fetchwords"'+(S.loading ? ' disabled' : '')+'>'+(S.loading ? '불러오는 중… (30초~1분 걸려요)' : '단어 불러오기')+'</button>' +
+    (has ? '<button class="btn quiet" data-act="cancelsetup"'+(S.loading ? ' disabled' : '')+'>취소</button>' : '') +
+    '</div></div>';
+}
+
+async function doFetchWords(){
+  const input = $('#apiKey');
+  const key = input ? input.value.trim() : '';
+  if (!key){ S.err = 'API 키를 입력해 주세요.'; renderMain(); return; }
+  setApiKey(key);
+  S.loading = true; S.err = ''; renderMain();
+  try{
+    const words = await fetchWords(key);
+    const cards = buildWordCards(words);
+    if (!cards.length) throw new Error('규칙에 맞는 단어가 하나도 없었어요. 다시 시도해 주세요.');
+    saveWords(words);
+    WORD_CARDS = cards;
+    S.setup = false;
+    resetView();
+  }catch(e){
+    S.err = (e && e.message) || '불러오기에 실패했어요.';
+  }finally{
+    S.loading = false;
+    renderTop();
+    if (S.mode === 'quiz' && !showSetup()) newQuestion(); else renderMain();
+  }
 }
 
 /* ----- 훑어보기 ----- */
@@ -244,7 +347,7 @@ function fillCard(){
 
 function schedule(){
   clearTimeout(S.timer);
-  if (S.mode !== 'browse' || !S.playing || S.done || document.hidden || lockedWord()) return;
+  if (S.mode !== 'browse' || !S.playing || S.done || document.hidden || showSetup()) return;
   const ms = store.speed * 1000;
   S.timer = setTimeout(S.flipped ? advance : flipCard, ms * (S.flipped ? .55 : .45));
 }
@@ -307,6 +410,7 @@ function makeOptions(c, p){
 function newQuestion(){
   clearTimeout(S.fbTimer);
   const p = pool();
+  if (showSetup() || !p.length){ S.q = null; renderMain(); return; }
   const c = pickCard(p);
   S.lastId = c.id;
   S.q = {c:c, opts:makeOptions(c, p), picked:null};
@@ -322,10 +426,6 @@ function answer(i){
   const st = store.stats[c.id] || (store.stats[c.id] = {s:0, r:0, w:0});
   if (ok){ st.s++; st.r++; } else { st.s = 0; st.w++; }
   S.session.n++; if (ok) S.session.ok++;
-  if (!store.unlocked && S.stage === 'kana'){
-    const g = gate();
-    if (g.m >= g.t){ store.unlocked = true; S.banner = true; }
-  }
   save();
   renderTop();
   renderMain();
@@ -375,8 +475,9 @@ function resetView(){
   S.deck = []; S.idx = 0; S.flipped = false; S.done = false; S.q = null; S.answered = false;
 }
 function setStage(st){
+  if (S.loading) return;
   resetView();
-  S.stage = st; S.mode = 'browse'; S.playing = true; S.confirmUnlock = false;
+  S.stage = st; S.mode = 'browse'; S.playing = true; S.setup = false; S.err = '';
   renderTop(); renderMain();
 }
 function setMode(m){
@@ -390,9 +491,8 @@ function setMode(m){
 /* ========== 이벤트 ========== */
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-act]');
-  if (!t) return;
+  if (!t || t.disabled) return;
   const act = t.dataset.act;
-  if (act !== 'unlock') S.confirmUnlock = false;
   if (act !== 'reset' && S.confirmReset){ S.confirmReset = false; renderTop(); }
   switch (act){
     case 'stage': if (t.dataset.s !== S.stage) setStage(t.dataset.s); break;
@@ -414,20 +514,16 @@ document.addEventListener('click', e => {
     case 'speak': speakCurrent(); break;
     case 'answer': answer(+t.dataset.i); break;
     case 'nextq': newQuestion(); break;
-    case 'closebanner': S.banner = false; renderTop(); break;
-    case 'togo': S.banner = false; setStage('word'); break;
-    case 'learn':
-      store.sel.kana.basic = true; store.sel.kana.dakuten = true; save();
-      resetView(); S.stage = 'kana'; S.mode = 'quiz'; renderTop(); newQuestion();
-      break;
-    case 'unlock':
-      if (!S.confirmUnlock){ S.confirmUnlock = true; renderMain(); }
-      else { store.unlocked = true; save(); S.confirmUnlock = false; setStage('word'); }
+    case 'fetchwords': doFetchWords(); break;
+    case 'refetch': resetView(); S.setup = true; S.err = ''; renderTop(); renderMain(); break;
+    case 'cancelsetup':
+      S.setup = false; S.err = ''; renderTop();
+      if (S.mode === 'quiz') newQuestion(); else renderMain();
       break;
     case 'reset':
       if (!S.confirmReset){ S.confirmReset = true; renderTop(); }
       else {
-        store.stats = {}; store.unlocked = false; S.session = {n:0, ok:0}; S.banner = false; S.confirmReset = false;
+        store.stats = {}; S.session = {n:0, ok:0}; S.confirmReset = false;
         save(); setStage('kana');
       }
       break;
@@ -447,9 +543,13 @@ document.addEventListener('change', e => {
 });
 
 document.addEventListener('keydown', e => {
-  if (e.metaKey || e.ctrlKey || e.altKey || lockedWord()) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
   const tag = e.target.tagName;
-  if (tag === 'INPUT') return;
+  if (tag === 'INPUT'){
+    if (e.target.id === 'apiKey' && e.key === 'Enter' && !S.loading){ e.preventDefault(); doFetchWords(); }
+    return;
+  }
+  if (showSetup()) return;
   const onBtn = tag === 'BUTTON';
   if (S.mode === 'browse' && !S.done){
     if (e.key === 'ArrowRight'){ e.preventDefault(); step(1); }
